@@ -1,28 +1,22 @@
 package sceptre.plumbing
 
-import akka.util.ByteString
 import sceptre.protocol.TelnetCodes
 
 trait Msg {
-  def byteString: ByteString
-  def utf8String: String
+  def toDebugString: String
 }
+
 object Msg {
-  case class ByteStringMsg(bs: ByteString) extends Msg {
-    def byteString = bs
-    def utf8String = bs.utf8String
-  }
-  case class StringMsg(str: String) extends Msg {
-    def byteString = ByteString(str)
-    def utf8String = str
+
+  case class Line(str: String, mxpTag: Option[MxpLineTag]) extends Msg {
+    def toDebugString = (mxpTag map (tag => s"[${tag.name}]$str") getOrElse str).replace(27.toChar.toString, "§")
   }
 
   import sceptre.protocol.TelnetCodes._
 
   trait TelnetSeqMsg extends Msg {
     def bytes: Seq[Byte]
-    def byteString = ByteString(bytes: _*)
-    def utf8String = CodeSeq.fromBytes(bytes).toString
+    def toDebugString = CodeSeq.fromBytes(bytes).toString
   }
 
   case object TelnetGa extends TelnetSeqMsg { val bytes = CodeSeq(IAC, GA).bytes }
@@ -46,26 +40,9 @@ object Msg {
     val bytes = codeSeq.bytes
     lazy val featureStr = feature.id
     lazy val subseqStr = subsequence.toString
-    override def utf8String = s"IAC,SB,$featureStr,$subseqStr,IAC,SE"
+    override def toDebugString = s"IAC,SB,$featureStr,$subseqStr,IAC,SE"
   }
 
-  class MxpEscape(id: Int, val utf8String: String) extends Msg {
-    val esc = 27.toChar
-    def byteString: ByteString = ByteString(s"$esc[${id}z")
-  }
-  case object MxpOpenLine     extends MxpEscape(0,  "MXP Open Line")
-  case object MxpSecureLine   extends MxpEscape(1,  "MXP Secure Line")
-  case object MxpRawLine      extends MxpEscape(2,  "MXP Raw Line")
-  case object MxpReset        extends MxpEscape(3,  "MXP Reset")
-  case object MxpTempSecure   extends MxpEscape(4,  "MXP Temp Secure")
-  case object MxpLockOpen     extends MxpEscape(5,  "MXP Lock Open")
-  case object MxpLockSecure   extends MxpEscape(6,  "MXP Lock Secure")
-  case object MxpLockRaw      extends MxpEscape(7,  "MXP Lock Secure")
-
-  case object MxpRoomName     extends MxpEscape(10, "MXP Room Name Line")
-  case object MxpRoomDesc     extends MxpEscape(11, "MXP Room Description Line")
-  case object MxpRoomExits    extends MxpEscape(12, "MXP Room Exits Line")
-  case object MxpWelcomeText  extends MxpEscape(19, "MXP Welcome Text Line")
 
 }
 

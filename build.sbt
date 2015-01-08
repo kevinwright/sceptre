@@ -10,17 +10,21 @@ scalaVersion := "2.11.4"
 
 libraryDependencies ++= {
   object V {
-    lazy val akka = "2.3.8"
-    lazy val akkaStreams = "1.0-M2"
-    //lazy val jetty = "9.2.3.v20140905" //latest
-    //lazy val jetty = "8.1.13.v20130916" //best for jetty
-    lazy val unfiltered = "0.8.2"
-    //lazy val jetty = "9.2.1.v20140609" //best for scalatra
-    //lazy val scalatra = "2.3.0"
+    val akka = "2.3.8"
+    val akkaStreams = "1.0-M2"
+    //val jetty = "9.2.3.v20140905" //latest
+    //val jetty = "8.1.13.v20130916" //best for jetty
+    val unfiltered = "0.8.3"
+    //val jetty = "9.2.1.v20140609" //best for scalatra
+    //val scalatra = "2.3.0"
+    val netty = "4.0.24.Final"
+    val scalatest = "2.2.0"
+    val mockito = "1.9.5"
+    val rxscala = "0.23.0"
   }
   Seq(
-    "com.typesafe.akka"      %% "akka-actor"               % V.akka,
-    "com.typesafe.akka"      %% "akka-stream-experimental" % V.akkaStreams,
+    //  "com.typesafe.akka"      %% "akka-actor"               % V.akka,
+    //  "com.typesafe.akka"      %% "akka-stream-experimental" % V.akkaStreams,
     //  "com.github.nscala-time" %% "nscala-time"             % "1.4.0",
     //  "nl.grons"               %% "metrics-scala"           % "3.3.0_a2.3",
     //  "org.neo4j"              %  "neo4j"                   % "2.1.5",
@@ -29,15 +33,17 @@ libraryDependencies ++= {
     //  "org.eclipse.jetty" %  "jetty-servlet"           % jettyVersion,
     //  "org.eclipse.jetty" %  "jetty-webapp"            % jettyVersion,
     //  "org.scalatra.scalate"   %% "scalate-core"            % "1.7.0",
-    //  "net.databinder"         %% "unfiltered"              % unfilteredVersion,
-    //  "net.databinder"         %% "unfiltered-jetty"        % unfilteredVersion,
-    //  "net.databinder"         %% "unfiltered-filter"       % unfilteredVersion,
-    //  "net.databinder"         %% "unfiltered-filter-async" % unfilteredVersion,
-    "junit"                  %  "junit"                   % "4.11"              % "test",
-    "org.scalatest"          %% "scalatest"               % "2.2.0"             % "test",
-    //  "net.databinder"         %% "unfiltered-scalatest"    % unfilteredVersion   % "test",
-    "org.mockito"            %  "mockito-all"             % "1.9.5"             % "test",
-    "com.typesafe.akka"      %% "akka-testkit"            % V.akka         % "test"
+        "io.netty"               %  "netty-all"               % V.netty,
+        "net.databinder"         %% "unfiltered"              % V.unfiltered,
+        "io.reactivex"           %% "rxscala"                 % V.rxscala,
+    //  "net.databinder"         %% "unfiltered-jetty"        % V.unfiltered,
+    //  "net.databinder"         %% "unfiltered-filter"       % V.unfiltered,
+    //  "net.databinder"         %% "unfiltered-filter-async" % V.unfiltered,
+    //  "junit"                  %  "junit"                   % "4.11"         % "test",
+        "org.scalatest"          %% "scalatest"               % V.scalatest    % "test",
+        "net.databinder"         %% "unfiltered-scalatest"    % V.unfiltered   % "test",
+        "org.mockito"            %  "mockito-all"             % V.mockito      % "test",
+        "com.typesafe.akka"      %% "akka-testkit"            % V.akka         % "test"
   )
 }
 
