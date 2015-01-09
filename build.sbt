@@ -25,7 +25,7 @@ libraryDependencies ++= {
   }
   Seq(
         "com.typesafe.akka"      %% "akka-actor"               % V.akka,
-        "io.reactivex"           %  "rxnetty"                  % V.rxnetty,
+    //  "io.reactivex"           %  "rxnetty"                  % V.rxnetty,
     //  "com.typesafe.akka"      %% "akka-stream-experimental" % V.akkaStreams,
     //  "com.github.nscala-time" %% "nscala-time"             % "1.4.0",
     //  "nl.grons"               %% "metrics-scala"           % "3.3.0_a2.3",
