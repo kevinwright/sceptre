@@ -21,9 +21,11 @@ libraryDependencies ++= {
     val scalatest = "2.2.0"
     val mockito = "1.9.5"
     val rxscala = "0.23.0"
+    val rxnetty = "0.4.4"
   }
   Seq(
-    //  "com.typesafe.akka"      %% "akka-actor"               % V.akka,
+        "com.typesafe.akka"      %% "akka-actor"               % V.akka,
+        "io.reactivex"           %  "rxnetty"                  % V.rxnetty,
     //  "com.typesafe.akka"      %% "akka-stream-experimental" % V.akkaStreams,
     //  "com.github.nscala-time" %% "nscala-time"             % "1.4.0",
     //  "nl.grons"               %% "metrics-scala"           % "3.3.0_a2.3",
@@ -33,8 +35,8 @@ libraryDependencies ++= {
     //  "org.eclipse.jetty" %  "jetty-servlet"           % jettyVersion,
     //  "org.eclipse.jetty" %  "jetty-webapp"            % jettyVersion,
     //  "org.scalatra.scalate"   %% "scalate-core"            % "1.7.0",
-        "io.netty"               %  "netty-all"               % V.netty,
-        "net.databinder"         %% "unfiltered"              % V.unfiltered,
+    //  "io.netty"               %  "netty-all"               % V.netty,
+    //  "net.databinder"         %% "unfiltered"              % V.unfiltered,
         "io.reactivex"           %% "rxscala"                 % V.rxscala,
     //  "net.databinder"         %% "unfiltered-jetty"        % V.unfiltered,
     //  "net.databinder"         %% "unfiltered-filter"       % V.unfiltered,
