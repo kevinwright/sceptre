@@ -18,4 +18,6 @@ object TelnetCapability {
   case class Refuse(feature: Code) extends TelnetCapability
   /** A capability we pass through unaltered **/
   case class Passthrough(feature: Code) extends TelnetCapability
+  /** A capability we pass through unaltered **/
+  case object PassthroughAllOthers extends TelnetCapability { val feature = ??? }
 }

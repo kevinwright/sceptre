@@ -3,7 +3,7 @@ package sceptre
 import java.net.InetSocketAddress
 
 import akka.actor._
-import sceptre.plumbing.{TcpClient, TcpServer}
+import sceptre.plumbing.{TelnetClient, TelnetServer, TcpClient, TcpServer}
 
 //import sceptre.plumbing.Msg._
 //import sceptre.processors._
@@ -54,6 +54,7 @@ object StraightProxy extends App {
 
 
 //  val pipeline = new Pipeline(
+
 //    name         = "pipeline",
 //    clientAddr   = new InetSocketAddress("localhost", 7777),
 //    serverAddr   = new InetSocketAddress("localhost", 23),
@@ -67,17 +68,21 @@ object StraightProxy extends App {
 //  )
 
   val tcpServerAddr = new InetSocketAddress("localhost", 7777)
-  val tcpServer = new TcpServer("telnetserver", tcpServerAddr)
+  val tcpServer = new TelnetServer("telnetserver", tcpServerAddr)
 
-  val tcpClientAddr = new InetSocketAddress("localhost", 23)
-  val tcpClient = new TcpClient("telnetclient", tcpClientAddr)
+  //val tcpClientAddr = new InetSocketAddress("localhost", 23)
+  //val tcpClientAddr = new InetSocketAddress("172.17.2.10", 23)
+  val tcpClientAddr = new InetSocketAddress("avalon-rpg.com", 23)
+  val tcpClient = new TelnetClient("telnetclient", tcpClientAddr)
 
   val serverConnections = tcpServer.start
   for (sc <- serverConnections) {
     val clientConnections = tcpClient.start
     for(cc <- clientConnections) {
-      sc.input.subscribe(cc.output)
-      cc.input.subscribe(sc.output)
+      cc.sink(sc.source)
+      sc.sink(cc.source)
+      sc.connect()
+      cc.connect()
     }
   }
 

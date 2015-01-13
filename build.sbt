@@ -22,6 +22,8 @@ libraryDependencies ++= {
     val mockito = "1.9.5"
     val rxscala = "0.23.0"
     val rxnetty = "0.4.4"
+    val logback = "1.1.2"
+    val slf4j = "1.7.10"
   }
   Seq(
         "com.typesafe.akka"      %% "akka-actor"               % V.akka,
@@ -41,7 +43,10 @@ libraryDependencies ++= {
     //  "net.databinder"         %% "unfiltered-jetty"        % V.unfiltered,
     //  "net.databinder"         %% "unfiltered-filter"       % V.unfiltered,
     //  "net.databinder"         %% "unfiltered-filter-async" % V.unfiltered,
-    //  "junit"                  %  "junit"                   % "4.11"         % "test",
+        "ch.qos.logback"         %  "logback-core"            % V.logback,
+        "ch.qos.logback"         %  "logback-classic"         % V.logback,
+        "org.slf4j"              %  "slf4j-api"               % V.slf4j,
+      //  "junit"                  %  "junit"                   % "4.11"         % "test",
         "org.scalatest"          %% "scalatest"               % V.scalatest    % "test",
         "net.databinder"         %% "unfiltered-scalatest"    % V.unfiltered   % "test",
         "org.mockito"            %  "mockito-all"             % V.mockito      % "test",

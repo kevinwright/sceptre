@@ -1,17 +1,12 @@
 package sceptre.protocol
 
+import rx.lang.scala.Observable
 import sceptre.plumbing.Msg._
-import sceptre.plumbing.{Msg, Route}
-import sceptre.processors.{Processor, RoutedProcessor}
 import sceptre.protocol.TelnetCapability._
 import sceptre.protocol.TelnetCodes._
 
-object TelnetNegotiator {
-  def apply(route: Route, capabilities: TelnetCapability*) =
-    Processor.Builder("TelnetNegotiator-" + route.name)(new TelnetNegotiator(route, capabilities))
-}
 
-class TelnetNegotiator(route: Route, capabilities: Seq[TelnetCapability]) extends RoutedProcessor(route) {
+class TelnetNegotiator(capabilities: TelnetCapability*) extends Function1[TelnetNegotiate, (Observable[TelnetNegotiate], Observable[TelnetNegotiate])] {
   private[this] var sent: Set[TelnetCapability] = Set.empty
   private[this] var negotiated: Set[(Code, Code)] = Set.empty
 
@@ -22,6 +17,8 @@ class TelnetNegotiator(route: Route, capabilities: Seq[TelnetCapability]) extend
   def donthandle(feature: Code) = capabilities contains Passthrough(feature)
   def solicited(feature: Code) = sent contains Solicit(feature)
   def proffered(feature: Code) = sent contains Proffer(feature)
+
+  def passthroughAllOthers = capabilities contains PassthroughAllOthers
 
   override def preStart: Unit = capabilities collect {
     case cap@Proffer(feature) => sent += cap; sendBack(TelnetWill(feature))

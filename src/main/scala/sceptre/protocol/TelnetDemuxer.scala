@@ -2,16 +2,32 @@ package sceptre.protocol
 
 import akka.util.ByteString
 import org.slf4j.LoggerFactory
-import sceptre.plumbing.Msg._
-import sceptre.plumbing.{Route, Envelope, Msg}
+import rx.lang.scala.Observable
+import sceptre.plumbing.Msg
 import sceptre.protocol.TelnetCodes._
 
 import scala.collection.mutable.ListBuffer
 
+class TelnetMuxer extends Function1[Msg, Observable[ByteString]] {
+  var buffer: ByteString = ByteString.empty
+
+  def apply(msg: Msg): Observable[ByteString] = msg match {
+    case Msg.FrameEnd(srcBytes) if buffer.isEmpty =>
+      Observable.empty
+    case Msg.FrameEnd(srcBytes) =>
+      val ret = Observable.just(buffer)
+      buffer = ByteString.empty
+      ret
+    case m =>
+      buffer = buffer ++ m.toByteString
+      Observable.empty
+  }
+}
+
 /**
  * Converts a ByteString into an Envelope, containing defragmented lines and telnet protocol messages
  */
-class TelnetDemuxer(route: Route) extends Function1[ByteString, Envelope] {
+class TelnetDemuxer() extends Function1[ByteString, Observable[Msg]] {
 
   private val log = LoggerFactory.getLogger(this.getClass)
 
@@ -26,22 +42,38 @@ class TelnetDemuxer(route: Route) extends Function1[ByteString, Envelope] {
   private[this] val textbuffer = ByteString.newBuilder
   private[this] val subNegBuffer = ByteString.newBuilder
 
-  def apply(byteStr: ByteString): Envelope = {
+  def apply(byteStr: ByteString): Observable[Msg] = {
 
     val iter = byteStr.iterator
 
     val outBuffer = ListBuffer.empty[Msg]
 
-    def flushText(): Unit = {
+    def flushLine(): Unit = {
       if (textbuffer.length > 0) {
         val str = textbuffer.result().utf8String
-        outBuffer += StringMsg(str)
+        outBuffer += Msg.Line(str)
+        textbuffer.clear()
+      }
+    }
+
+    def flushPartLine(): Unit = {
+      if (textbuffer.length > 0) {
+        val str = textbuffer.result().utf8String
+        outBuffer += Msg.PartLine(str)
+        textbuffer.clear()
+      }
+    }
+
+    def flushPrompt(): Unit = {
+      if (textbuffer.length > 0) {
+        val str = textbuffer.result().utf8String
+        outBuffer += Msg.Prompt(str)
         textbuffer.clear()
       }
     }
 
     def flushSubNeg(feature: Code): Unit = {
-      outBuffer += TelnetSubnegotiate(feature, CodeSeq fromBytes subNegBuffer.result())
+      outBuffer += Msg.TelnetSubnegotiate(feature, CodeSeq fromBytes subNegBuffer.result())
       subNegBuffer.clear()
     }
 
@@ -51,20 +83,24 @@ class TelnetDemuxer(route: Route) extends Function1[ByteString, Envelope] {
       state match {
         case InText => next() match {
           case IAC.value =>
-            flushText()
             state = InProto
-          case '\r' =>
-          case '\n' => textbuffer += '\n'; flushText()
+          //case '\r' =>
+          case '\n' =>
+            textbuffer += '\n'
+            flushLine()
           case x => textbuffer += x
         }
         case InProto => next() match {
-          case GA.value => outBuffer += TelnetGa
-          case WILL.value => outBuffer += TelnetWill(next())
-          case WONT.value => outBuffer += TelnetWont(next())
-          case DO.value => outBuffer += TelnetDo(next())
-          case DONT.value => outBuffer += TelnetDont(next())
-          case SB.value => state = OpeningSubNeg
+          case GA.value   => flushPrompt(); outBuffer += Msg.TelnetGa; state = InText
+          case WILL.value => flushPartLine(); outBuffer += Msg.TelnetWill(next()); state = InText
+          case WONT.value => flushPartLine(); outBuffer += Msg.TelnetWont(next()); state = InText
+          case DO.value   => flushPartLine(); outBuffer += Msg.TelnetDo(next());   state = InText
+          case DONT.value => flushPartLine(); outBuffer += Msg.TelnetDont(next()); state = InText
+          case SB.value =>
+            flushPartLine()
+            state = OpeningSubNeg
           case code =>
+            flushPartLine()
             log.error("invalid telnet sequence: " + CodeSeq(IAC, TelnetCodes(code)).toString)
             state = InText
         }
@@ -78,6 +114,7 @@ class TelnetDemuxer(route: Route) extends Function1[ByteString, Envelope] {
         case InClosableSubNeg(feature) => next() match {
           case SE.value =>
             flushSubNeg(feature)
+            state = InText
           case x =>
             subNegBuffer += x
             state = InSubNeg(feature)
@@ -94,7 +131,11 @@ class TelnetDemuxer(route: Route) extends Function1[ByteString, Envelope] {
       "Not in subnegotiation state, subnegotiation buffer should be empty"
     )
 
-    Envelope.issue(outBuffer.toList, route)
+    flushPartLine()
+
+    outBuffer += Msg.FrameEnd(byteStr)
+
+    Observable from outBuffer
   }
 
 }
