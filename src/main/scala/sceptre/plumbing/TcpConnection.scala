@@ -21,13 +21,13 @@ import Endpoint._
 
 private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, addr: InetSocketAddress)(implicit system: ActorSystem) {
 
-  def start: Observable[Connection[ByteString]] =
+  def start: Observable[Terminus[ByteString]] =
     Observable { subscriber =>
       system.actorOf(Props(new Connector(subscriber)))
     }
 
 
-  class Connector(connsubscriber: Subscriber[Connection[ByteString]]) extends Actor with ActorLogging {
+  class Connector(connsubscriber: Subscriber[Terminus[ByteString]]) extends Actor with ActorLogging {
 
     endpointType match {
       case Client =>
@@ -44,7 +44,7 @@ private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, ad
         val remoteActor = sender()
         log.info(s"connected sender = $remoteActor")
 
-        connsubscriber.onNext(new Connection[ByteString]{
+        connsubscriber.onNext(new Terminus[ByteString]{
           def sink(source: Observable[ByteString]) = source.subscribe(
             onNext = (data: ByteString) => {
               //log.info(name + " output bytes " + data.iterator.map(_.toInt & 0xFF).mkString("[", ",", "]"))
@@ -59,7 +59,7 @@ private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, ad
             remoteActor ! Register(handler)
           }.publish
 
-          def connect() = source.connect
+          val connect = source.connect
         })
 
       case cf @ CommandFailed(b: Connect) =>

@@ -76,13 +76,11 @@ object StraightProxy extends App {
   val tcpClient = new TelnetClient("telnetclient", tcpClientAddr)
 
   val serverConnections = tcpServer.start
-  for (sc <- serverConnections) {
+  for (serverConn <- serverConnections) {
     val clientConnections = tcpClient.start
-    for(cc <- clientConnections) {
-      cc.sink(sc.source)
-      sc.sink(cc.source)
-      sc.connect()
-      cc.connect()
+    for(clientConn <- clientConnections) {
+      clientConn >> serverConn
+      serverConn >> clientConn
     }
   }
 

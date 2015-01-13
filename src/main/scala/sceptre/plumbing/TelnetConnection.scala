@@ -13,14 +13,14 @@ private[plumbing] class TelnetEndpoint(endpointType: EndpointType, name: String,
 
   val tcpEndpoint = new TcpEndpoint(endpointType, name, addr)
 
-  def start(): Observable[Connection[Msg]] = {
+  def start(): Observable[Terminus[Msg]] = {
 
     tcpEndpoint.start map {
-      case tcpConn => new Connection[Msg] {
+      case tcpConn => new Terminus[Msg] {
         val demux = new TelnetDemuxer()
         val mux = new TelnetMuxer()
 
-        def sink(source: Observable[Msg]) = {
+        val sink = (source: Observable[Msg]) => {
           val muxed = source.map{ msg =>
             println(s"$name output ${msg.toDebugString}")
             msg
@@ -31,7 +31,7 @@ private[plumbing] class TelnetEndpoint(endpointType: EndpointType, name: String,
           tcpConn.sink(muxed)
         }
 
-        def source: Observable[Msg] =
+        val source: Observable[Msg] =
           tcpConn.source.map{bytestr =>
             println(name + " input bytes " + bytestr.iterator.map(_.toInt & 0xFF).mkString("[", ",", "]"))
             bytestr
@@ -39,7 +39,8 @@ private[plumbing] class TelnetEndpoint(endpointType: EndpointType, name: String,
             println(name + " input " + msg.toDebugString)
             msg
           }
-        def connect() = tcpConn.connect()
+
+        val connect = tcpConn.connect
       }
     }
   }
