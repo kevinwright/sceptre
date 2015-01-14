@@ -45,11 +45,8 @@ private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, ad
         log.info(s"connected sender = $remoteActor")
 
         connsubscriber.onNext(new Terminus[ByteString]{
-          def sink(source: Observable[ByteString]) = source.subscribe(
-            onNext = (data: ByteString) => {
-              //log.info(name + " output bytes " + data.iterator.map(_.toInt & 0xFF).mkString("[", ",", "]"))
-              remoteActor ! Tcp.Write(data)
-            },
+          val sink = (source: Observable[ByteString]) => source.subscribe(
+            onNext = (data: ByteString) => remoteActor ! Tcp.Write(data),
             onError = (_: Throwable) => {},
             onCompleted = () => ()
           )
@@ -59,7 +56,7 @@ private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, ad
             remoteActor ! Register(handler)
           }.publish
 
-          val connect = source.connect
+          val connect = () => source.connect
         })
 
       case cf @ CommandFailed(b: Connect) =>

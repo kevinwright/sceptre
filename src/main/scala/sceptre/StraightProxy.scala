@@ -3,19 +3,21 @@ package sceptre
 import java.net.InetSocketAddress
 
 import akka.actor._
-import sceptre.plumbing.{TelnetClient, TelnetServer, TcpClient, TcpServer}
+import org.slf4j.LoggerFactory
+import sceptre.plumbing.{TelnetClient, TelnetServer}
 
-//import sceptre.plumbing.Msg._
-//import sceptre.processors._
-//import sceptre.protocol.TelnetCapability.Passthrough
-//import sceptre.protocol.{TelnetNegotiator, TelnetCodes}
-//import TelnetCodes._
-//import sceptre.plumbing.{Outbound, Inbound, Pipeline}
+import sceptre.protocol.TelnetNegotiator
+import sceptre.plumbing.Pipable._
 
 object StraightProxy extends App {
+
+  private val log = LoggerFactory.getLogger(this.getClass)
+
+  log.info("app starting")
+
+
   implicit val system: ActorSystem = ActorSystem.create()
-//  val inboundNegotiator = TelnetNegotiator(
-//    Inbound,
+  val inboundNegotiator = TelnetNegotiator(
 //    Passthrough(MSSP),
 //    Passthrough(ECHO),
 //    Passthrough(TERMINAL_TYPE),
@@ -30,10 +32,9 @@ object StraightProxy extends App {
 //    Passthrough(TRANSMIT_BINARY),
 //    Passthrough(TIMING_MARK),
 //    Passthrough(LINEMODE)
-//  )
+  )
 
-//  val outboundNegotiator = TelnetNegotiator(
-//    Outbound,
+  val outboundNegotiator = TelnetNegotiator(
 //    Passthrough(MXP),
 //    Passthrough(MSDP),
 //    Passthrough(GMCP),
@@ -50,37 +51,24 @@ object StraightProxy extends App {
 //    Passthrough(TRANSMIT_BINARY),
 //    Passthrough(TIMING_MARK),
 //    Passthrough(LINEMODE)
-//  )
+  )
 
-
-//  val pipeline = new Pipeline(
-
-//    name         = "pipeline",
-//    clientAddr   = new InetSocketAddress("localhost", 7777),
-//    serverAddr   = new InetSocketAddress("localhost", 23),
-////    serverAddr   = new InetSocketAddress("avalon-rpg.com", 23),
-//    processBuilders = Seq(
-//      outboundNegotiator,
-//      MessageLogger(classOf[StringMsg], classOf[TelnetSeqMsg], classOf[MxpEscape]),
-//      ProtocolDebugger(classOf[TelnetSeqMsg]),
-//      inboundNegotiator
-//    )
-//  )
 
   val tcpServerAddr = new InetSocketAddress("localhost", 7777)
   val tcpServer = new TelnetServer("telnetserver", tcpServerAddr)
 
-  //val tcpClientAddr = new InetSocketAddress("localhost", 23)
-  //val tcpClientAddr = new InetSocketAddress("172.17.2.10", 23)
-  val tcpClientAddr = new InetSocketAddress("avalon-rpg.com", 23)
+  val tcpClientAddr = new InetSocketAddress("localhost", 23)
+  //val tcpClientAddr = new InetSocketAddress("avalon-rpg.com", 23)
   val tcpClient = new TelnetClient("telnetclient", tcpClientAddr)
+
+//  val x = FnToObservableResponseIsPipable(outboundNegotiator.wire)
 
   val serverConnections = tcpServer.start
   for (serverConn <- serverConnections) {
     val clientConnections = tcpClient.start
     for(clientConn <- clientConnections) {
-      clientConn >> serverConn
-      serverConn >> clientConn
+      clientConn >> outboundNegotiator.wire >> serverConn
+      serverConn >> inboundNegotiator.wire >> clientConn
     }
   }
 

@@ -1,10 +1,10 @@
 organization := "net.thecoda"
 
-name := "avalon-sidekick"
+name := "sceptre"
 
 version := "0.0.1-SNAPSHOT"
 
-description := "A telnet proxy for avalon-rpg.  Able to support clients with extra goodies that the Game hides from you."
+description := "A telnet proxy for MUDs.  Work in progress."
 
 scalaVersion := "2.11.4"
 
