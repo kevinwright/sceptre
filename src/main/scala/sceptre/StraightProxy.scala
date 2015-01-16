@@ -5,8 +5,11 @@ import java.net.InetSocketAddress
 import akka.actor._
 import org.slf4j.LoggerFactory
 import sceptre.plumbing.{TelnetClient, TelnetServer}
+import sceptre.processors.MessageLogger
+import sceptre.protocol.TelnetCapability._
 
-import sceptre.protocol.TelnetNegotiator
+import sceptre.protocol.{TelnetCapability, TelnetNegotiator}
+import sceptre.protocol.TelnetCodes._
 import sceptre.plumbing.Pipable._
 
 object StraightProxy extends App {
@@ -17,7 +20,14 @@ object StraightProxy extends App {
 
 
   implicit val system: ActorSystem = ActorSystem.create()
-  val inboundNegotiator = TelnetNegotiator(
+  val mudFacingNegotiator = TelnetNegotiator(
+      "mud",
+      Reject(SUPPRESS_GO_AHEAD),
+      Refuse(SUPPRESS_GO_AHEAD),
+      Refuse(ECHO),
+      Reject(ECHO),
+      Refuse(NAWS),
+      Reject(NAWS)
 //    Passthrough(MSSP),
 //    Passthrough(ECHO),
 //    Passthrough(TERMINAL_TYPE),
@@ -27,48 +37,59 @@ object StraightProxy extends App {
 //    Passthrough(ENVVARS),
 //    Passthrough(NAWS),
 //    Passthrough(STATUS),
-//    Passthrough(SUPPRESS_GO_AHEAD),
 //    Passthrough(TOGGLE_FLOW_CONTROL),
 //    Passthrough(TRANSMIT_BINARY),
 //    Passthrough(TIMING_MARK),
 //    Passthrough(LINEMODE)
   )
 
-  val outboundNegotiator = TelnetNegotiator(
-//    Passthrough(MXP),
-//    Passthrough(MSDP),
-//    Passthrough(GMCP),
-//    Passthrough(ECHO),
-//    Passthrough(TERMINAL_TYPE),
-//    Passthrough(TERMINAL_SPEED),
+  val localFacingNegotiator = TelnetNegotiator(
+    "client",
+    Proffer(TRANSMIT_BINARY),
+    Solicit(TRANSMIT_BINARY),
+    Proffer(MXP),
+    Proffer(GMCP),
+    Solicit(TERMINAL_TYPE),
+    Solicit(NAWS),
+    Solicit(ENVVARS),
+    Solicit(STATUS),
+    Solicit(NEW_ENV),
+    Reject(SUPPRESS_GO_AHEAD),
+    Refuse(SUPPRESS_GO_AHEAD),
+    Reject(TERMINAL_SPEED),
+    Refuse(TERMINAL_SPEED),
+    Refuse(ECHO),
+    Reject(ECHO)
 //    Passthrough(X_DISPLAY),
-//    Passthrough(NEW_ENV),
-//    Passthrough(ENVVARS),
-//    Passthrough(NAWS),
-//    Passthrough(STATUS),
-//    Passthrough(SUPPRESS_GO_AHEAD),
 //    Passthrough(TOGGLE_FLOW_CONTROL),
-//    Passthrough(TRANSMIT_BINARY),
 //    Passthrough(TIMING_MARK),
 //    Passthrough(LINEMODE)
   )
 
 
-  val tcpServerAddr = new InetSocketAddress("localhost", 7777)
-  val tcpServer = new TelnetServer("telnetserver", tcpServerAddr)
+  val inboundServerAddr = new InetSocketAddress("localhost", 7777)
+  val inboundServer = new TelnetServer("local-facing", inboundServerAddr)
 
-  val tcpClientAddr = new InetSocketAddress("localhost", 23)
+  val mudAddr = new InetSocketAddress("localhost", 23)
   //val tcpClientAddr = new InetSocketAddress("avalon-rpg.com", 23)
-  val tcpClient = new TelnetClient("telnetclient", tcpClientAddr)
+  val mudEndpoint = new TelnetClient("mud-facing", mudAddr)
 
 //  val x = FnToObservableResponseIsPipable(outboundNegotiator.wire)
 
-  val serverConnections = tcpServer.start
-  for (serverConn <- serverConnections) {
-    val clientConnections = tcpClient.start
-    for(clientConn <- clientConnections) {
-      clientConn >> outboundNegotiator.wire >> serverConn
-      serverConn >> inboundNegotiator.wire >> clientConn
+  val inboundConnections = inboundServer.start
+  for (inboundConn <- inboundConnections) {
+    val mudConnections = mudEndpoint.start
+    for(mudConn <- mudConnections) {
+      val wireForward = mudConn >>
+        MessageLogger("mud") >>
+        mudFacingNegotiator
+
+      val wireBackward = inboundConn >>
+        MessageLogger("client") >>
+        localFacingNegotiator
+
+      wireForward >> wireBackward
+      wireBackward >> wireForward
     }
   }
 

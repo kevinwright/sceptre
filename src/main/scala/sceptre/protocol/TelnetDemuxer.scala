@@ -1,6 +1,7 @@
 package sceptre.protocol
 
 import akka.util.ByteString
+import com.sun.org.apache.bcel.internal.util.ByteSequence
 import org.slf4j.LoggerFactory
 import rx.lang.scala.Observable
 import sceptre.plumbing.Msg
@@ -8,21 +9,7 @@ import sceptre.protocol.TelnetCodes._
 
 import scala.collection.mutable.ListBuffer
 
-class TelnetMuxer extends Function1[Msg, Observable[ByteString]] {
-  var buffer: ByteString = ByteString.empty
 
-  def apply(msg: Msg): Observable[ByteString] = msg match {
-    case Msg.FrameEnd(srcBytes) if buffer.isEmpty =>
-      Observable.empty
-    case Msg.FrameEnd(srcBytes) =>
-      val ret = Observable.just(buffer)
-      buffer = ByteString.empty
-      ret
-    case m =>
-      buffer = buffer ++ m.toByteString
-      Observable.empty
-  }
-}
 
 /**
  * Converts a ByteString into an Envelope, containing defragmented lines and telnet protocol messages
@@ -41,6 +28,8 @@ class TelnetDemuxer() extends Function1[ByteString, Observable[Msg]] {
   private[this] var state: State = InText
   private[this] val textbuffer = ByteString.newBuilder
   private[this] val subNegBuffer = ByteString.newBuilder
+
+  private val enableCompressionSeq = CodeSeq(IAC, SB, MCCP, IAC, SE)
 
   def apply(byteStr: ByteString): Observable[Msg] = {
 
@@ -73,8 +62,12 @@ class TelnetDemuxer() extends Function1[ByteString, Observable[Msg]] {
     }
 
     def flushSubNeg(feature: Code): Unit = {
-      outBuffer += Msg.TelnetSubnegotiate(feature, CodeSeq fromBytes subNegBuffer.result())
+      val bytes = subNegBuffer.result()
+      val codeSeq = CodeSeq fromBytes bytes
+      val msg = Msg.TelnetSubnegotiate(feature, codeSeq)
+      outBuffer += msg
       subNegBuffer.clear()
+      //TODO: detect enableCompressionSeq here and enable decompression
     }
 
     import iter.{hasNext, next}
@@ -91,6 +84,9 @@ class TelnetDemuxer() extends Function1[ByteString, Observable[Msg]] {
           case x => textbuffer += x
         }
         case InProto => next() match {
+          // double-IAC is only valid in binary mode, representing an escaped string value of 255
+          // No need for special non-binary-mode handling as this should never occur here
+          case IAC.value  => textbuffer += IAC.value; state = InText
           case GA.value   => flushPrompt(); outBuffer += Msg.TelnetGa; state = InText
           case WILL.value => flushPartLine(); outBuffer += Msg.TelnetWill(next()); state = InText
           case WONT.value => flushPartLine(); outBuffer += Msg.TelnetWont(next()); state = InText

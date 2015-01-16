@@ -71,16 +71,8 @@ private[plumbing] class TcpEndpoint(endpointType: EndpointType, name: String, ad
     }
   }
 
-  class RxActor[T: ClassTag](subscriber: Subscriber[T]) extends Actor with ActorLogging {
-    def receive: Receive = {
-      case Notification.OnNext(value: T) => subscriber.onNext(value)
-      case Notification.OnCompleted => subscriber.onCompleted()
-      case Notification.OnError(value) => subscriber.onError(value)
-    }
-  }
-
   class Handler (remote: InetSocketAddress, connection: ActorRef, subscriber: Subscriber[ByteString]) extends Actor with ActorLogging {
-    val rx = context.actorOf(Props(new RxActor(subscriber)) )
+    val rx = context.actorOf(RxActor wrapping subscriber)
 
     // We need to know when the connection dies without sending a `Tcp.ConnectionClosed`
     context.watch(connection)

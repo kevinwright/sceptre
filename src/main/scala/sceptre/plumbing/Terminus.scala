@@ -2,9 +2,9 @@ package sceptre.plumbing
 
 import rx.lang.scala.{Subscription, Observable}
 
-sealed trait Response[+T]
-case class Output[+T](x: T) extends Response[T]
-case class Reply[+T](x: T) extends Response[T]
+sealed trait Response[+T] { def content: T }
+case class Output[+T](content: T) extends Response[T]
+case class Reply[+T](content: T) extends Response[T]
 
 case class AdaptedTerminus[T](
   source  : Observable[T],

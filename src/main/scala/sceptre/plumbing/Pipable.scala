@@ -10,6 +10,18 @@ trait Pipable[MsgType] {
 object Pipable {
   type Aux[MsgT, ResultT] = Pipable[MsgT]{type Result = ResultT}
 
+  implicit class SimpleFnIsPipable[T](fn: T => T) extends Pipable[T] {
+    type Result = Terminus[T]
+
+    def pipeFrom(term: Terminus[T]): Terminus[T] = {
+      AdaptedTerminus(
+        source = term.source map fn,
+        sink = term.sink,
+        connect = term.connect
+      )
+    }
+  }
+
   implicit class FnToObservableIsPipable[T](fn: T => Observable[T]) extends Pipable[T] {
     type Result = Terminus[T]
 
@@ -17,6 +29,18 @@ object Pipable {
       AdaptedTerminus(
         source = term.source concatMap fn,
         sink = term.sink,
+        connect = term.connect
+      )
+    }
+  }
+
+  implicit class FnFromResponseIsPipable[T](fn: Response[T] => T) extends Pipable[T] {
+    type Result = Terminus[T]
+
+    def pipeFrom(term: Terminus[T]): Terminus[T] = {
+      AdaptedTerminus(
+        source = term.source map { msg => fn(Reply(msg)) },
+        sink = (obs) => term.sink(obs map { msg => fn(Output(msg)) }),
         connect = term.connect
       )
     }

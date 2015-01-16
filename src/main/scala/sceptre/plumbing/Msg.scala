@@ -2,17 +2,37 @@ package sceptre.plumbing
 
 import akka.util.ByteString
 import sceptre.protocol.TelnetCodes
+import sceptre.protocol.TelnetCodes.Code
 
 trait Msg {
   def toByteString: ByteString
   def toDebugString: String
 }
 
+trait InternalMsg extends Msg {
+  val toByteString =  ByteString.empty
+}
+
 object Msg {
 
-  case class FrameEnd(input: ByteString) extends Msg {
-    val toByteString =  ByteString.empty
+  case class FrameEnd(input: ByteString) extends InternalMsg {
     val toDebugString = "-FRAME-END-"
+  }
+
+  /**
+   * Sent downstream to allow subsequent transforms to react to Msg-level negotiations
+   * such as MXP, GMCP, NAWS, etc.
+   */
+  case class TelnetNegotiated(state: Code, feature: Code) extends InternalMsg {
+    val toDebugString = s"-Negotiated-${state.id}-${feature.id}-"
+  }
+
+  case object TelnetEnableBinary extends InternalMsg {
+    val toDebugString = s"-Telnet-Enable-Binary-"
+  }
+
+  case object TelnetEnableCompression extends InternalMsg {
+    val toDebugString = s"-Telnet-Enable-Compression-"
   }
 
   trait Text extends Msg {
@@ -36,9 +56,10 @@ object Msg {
 
   case object TelnetGa extends TelnetSeq { val bytes = CodeSeq(IAC, GA).bytes }
 
-  abstract class TelnetNegotiate(val state: Code) extends TelnetSeq {
+  sealed abstract class TelnetNegotiate(val state: Code) extends TelnetSeq {
     def feature: Code
     lazy val bytes = TelnetCodes.CodeSeq(IAC, state, feature).bytes
+    override def toDebugString = toString
   }
   case class TelnetWill(feature: Code) extends TelnetNegotiate(WILL)
   case class TelnetWont(feature: Code) extends TelnetNegotiate(WONT)

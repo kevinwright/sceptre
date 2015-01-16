@@ -8,7 +8,9 @@ object TelnetCodes {
   def all: Set[Code] = _all
 
   //only codes build from an int get auto-registered
-  class Code(val value: Byte, val id: String, val description: String)
+  class Code(val value: Byte, val id: String, val description: String) {
+    override def toString = id
+  }
 
   private object Code{
     def apply(value: Int, id: String, description: String = "") = {
@@ -97,6 +99,7 @@ object TelnetCodes {
 
   val MSDP                = Code(69,  "MSDP", "Mud Server Data Protocol")
   val MSSP                = Code(70,  "MSSP", "Mud Server Status Protocol")
+  val MCCP                = Code(86,  "MCCP", "Mud Client Compression Protocol")
   val MXP                 = Code(91,  "MXP", "Mud Extension Protocol")
   val GMCP                = Code(201, "GMCP")
 
